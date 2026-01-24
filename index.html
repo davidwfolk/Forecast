@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golf Shot Predictor</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f0fdf4; }
+        
+        /* Custom Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none; 
+            width: 100%; 
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #15803d; /* green-700 */
+            cursor: pointer;
+            margin-top: -10px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #d1d5db;
+            border-radius: 2px;
+        }
+        
+        .lie-btn.active {
+            background-color: #15803d;
+            color: white;
+            border-color: #15803d;
+        }
+        
+        /* Circular Progress Bar */
+        .progress-circle {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: conic-gradient(#16a34a var(--progress), #e5e7eb 0deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.5s ease-out;
+        }
+        .progress-inner {
+            width: 130px;
+            height: 130px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div class="max-w-md mx-auto min-h-screen bg-white shadow-xl overflow-hidden flex flex-col">
+        
+        <!-- Header -->
+        <div class="bg-green-800 p-6 text-white text-center">
+            <h1 class="text-2xl font-bold">Shot Predictor Pro</h1>
+            <p class="text-green-100 text-sm mt-1">High-Precision Data Model</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="p-6 flex-1 flex flex-col gap-8">
+
+            <!-- 1. HANDICAP INPUT -->
+            <div>
+                <div class="flex justify-between mb-2">
+                    <label class="font-bold text-gray-700">Handicap</label>
+                    <span id="hcp-val" class="font-mono bg-gray-100 px-2 py-0.5 rounded text-green-800 font-bold">10</span>
+                </div>
+                <!-- Range includes negative numbers for Plus Handicaps -->
+                <input type="range" id="hcp-input" min="-7" max="36" value="10" step="1">
+                <div class="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>+7 (Tour)</span>
+                    <span>36</span>
+                </div>
+            </div>
+
+            <!-- 2. DISTANCE INPUT -->
+            <div>
+                <div class="flex justify-between mb-2">
+                    <label class="font-bold text-gray-700">Distance to Pin</label>
+                    <span class="font-mono bg-gray-100 px-2 py-0.5 rounded text-blue-800 font-bold"><span id="dist-val">150</span> yds</span>
+                </div>
+                <input type="range" id="dist-input" min="50" max="250" value="150" step="5">
+                <div class="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>50y</span>
+                    <span>250y</span>
+                </div>
+            </div>
+
+            <!-- 3. LIE SELECTION -->
+            <div>
+                <label class="font-bold text-gray-700 block mb-3">Lie Condition</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <button class="lie-btn active border border-gray-300 rounded-lg p-3 text-sm font-semibold transition hover:bg-green-50" data-lie="fairway" onclick="setLie('fairway')">
+                        🌱 Fairway
+                    </button>
+                    <button class="lie-btn border border-gray-300 rounded-lg p-3 text-sm font-semibold transition hover:bg-green-50" data-lie="rough" onclick="setLie('rough')">
+                        🌿 Rough
+                    </button>
+                    <button class="lie-btn border border-gray-300 rounded-lg p-3 text-sm font-semibold transition hover:bg-green-50" data-lie="bunker" onclick="setLie('bunker')">
+                        🏖️ Bunker
+                    </button>
+                    <button class="lie-btn border border-gray-300 rounded-lg p-3 text-sm font-semibold transition hover:bg-green-50" data-lie="recovery" onclick="setLie('recovery')">
+                        🌲 Recovery
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4. RESULTS DISPLAY -->
+            <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200 shadow-inner flex flex-col items-center">
+                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">Chance to Hit Green</h3>
+                
+                <!-- Circular Gauge -->
+                <div class="progress-circle shadow-lg" id="prob-circle">
+                    <div class="progress-inner">
+                        <span id="prob-display" class="text-3xl font-bold text-slate-800">--%</span>
+                        <span class="text-[10px] text-gray-400 font-semibold uppercase mt-1">Success</span>
+                    </div>
+                </div>
+
+                <!-- Contextual Data -->
+                <div class="w-full mt-6 space-y-3">
+                    <!-- Comparison Bar -->
+                    <div class="flex justify-between items-end text-xs mb-1">
+                        <span class="text-gray-500">Tour Pro Average (Same Lie)</span>
+                        <span id="pro-val" class="font-bold text-slate-700">--%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div id="pro-bar" class="bg-slate-400 h-2 rounded-full" style="width: 0%"></div>
+                    </div>
+
+                    <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800">
+                        <p id="analysis-text" class="leading-relaxed">
+                            Adjust settings to see your shot analysis.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- LOGIC SCRIPT -->
+    <script>
+        // --- 1. HIGH-PRECISION DATA (Derived from Tour Stats) ---
+        // Instead of multipliers, we use specific lookups for each lie.
+        // Data format: Distance (yards) -> GIR %
+        
+        const baselines = {
+            fairway: {
+                50: 97, 75: 93, 100: 88, 125: 81, 
+                150: 73, 175: 64, 200: 54, 225: 43, 250: 32
+            },
+            rough: {
+                50: 88, 75: 82, 100: 72, 125: 60, 
+                150: 48, 175: 37, 200: 28, 225: 20, 250: 12
+            },
+            bunker: {
+                // Fairway bunker stats
+                50: 80, 75: 70, 100: 60, 125: 48, 
+                150: 35, 175: 25, 200: 15, 225: 8, 250: 3
+            },
+            recovery: {
+                // Punch out / Deep trouble
+                50: 50, 75: 30, 100: 15, 125: 5, 
+                150: 2, 175: 1, 200: 0, 225: 0, 250: 0
+            }
+        };
+
+        // State
+        let state = {
+            hcp: 10,
+            dist: 150,
+            lie: 'fairway'
+        };
+
+        // --- 2. MATH FUNCTIONS ---
+
+        function interpolate(dist, table) {
+            const dists = Object.keys(table).map(Number).sort((a,b)=>a-b);
+            
+            // Clamping
+            if (dist <= dists[0]) return table[dists[0]];
+            if (dist >= dists[dists.length-1]) return table[dists[dists.length-1]];
+
+            // Linear Interpolation
+            for (let i = 0; i < dists.length - 1; i++) {
+                let d1 = dists[i];
+                let d2 = dists[i+1];
+                if (dist >= d1 && dist <= d2) {
+                    let v1 = table[d1];
+                    let v2 = table[d2];
+                    let ratio = (dist - d1) / (d2 - d1);
+                    return v1 + (v2 - v1) * ratio;
+                }
+            }
+            return 0;
+        }
+
+        function calculate() {
+            // A. Get Base Probability for the SPECIFIC lie (Pro Baseline)
+            const table = baselines[state.lie] || baselines.fairway;
+            const proProb = interpolate(state.dist, table);
+
+            // B. Calculate Dynamic Handicap Penalty
+            const hcp = parseInt(state.hcp);
+            
+            // 1. Base Skill Gap (Pro is roughly +5 to +6)
+            // If user is +7 (entered as -7), skillDelta is -2 (Better than avg pro)
+            const skillDelta = hcp + 5; 
+            
+            // 2. Distance Scaling Factor
+            let distanceFactor = 1.0;
+            if (state.dist < 100) distanceFactor = 0.6; // Forgiving
+            else if (state.dist > 175) distanceFactor = 1.3; // Punishing
+
+            // 3. Calculate Decay
+            // If skillDelta is negative (Plus handicap), decay is negative (Boost)
+            const decay = skillDelta * 1.2 * distanceFactor;
+
+            // Apply decay (or boost if decay is negative)
+            let userProb = proProb - decay;
+
+            // Cap checks
+            userProb = Math.min(99, Math.max(1, userProb));
+
+            // Lie "Complication" Factor for Amateurs
+            // Only apply penalty if handicap is > 0 (Standard amateurs)
+            // Plus handicaps don't suffer the extra "lack of power" penalty
+            if (hcp > 0) {
+                if (state.lie === 'rough') userProb *= 0.9; 
+                if (state.lie === 'bunker') userProb *= 0.8;
+            }
+
+            return {
+                userProb: userProb.toFixed(1),
+                proProb: proProb.toFixed(1)
+            };
+        }
+
+        // --- 3. UI UPDATES ---
+
+        function updateUI() {
+            const results = calculate();
+            
+            // Update Numbers
+            document.getElementById('prob-display').textContent = Math.round(results.userProb) + "%";
+            document.getElementById('pro-val').textContent = Math.round(results.proProb) + "%";
+            
+            // Update Visual Gauge
+            const circle = document.getElementById('prob-circle');
+            circle.style.setProperty('--progress', `${results.userProb}%`);
+
+            // Update Pro Comparison Bar
+            document.getElementById('pro-bar').style.width = `${results.proProb}%`;
+
+            // Update Analysis Text
+            updateAnalysisText(results.userProb, results.proProb);
+        }
+
+        function updateAnalysisText(userProb, proProb) {
+            const el = document.getElementById('analysis-text');
+            const d = state.dist;
+            const l = state.lie;
+            const uProb = parseFloat(userProb);
+            const pProb = parseFloat(proProb);
+
+            if (l === 'recovery') {
+                el.textContent = "Recovery Mode. Do not look at the flag. Your only goal is to get the ball back onto the short grass.";
+                return;
+            }
+
+            if (uProb > pProb + 5) {
+                el.textContent = "Elite Status. Your handicap suggests you strike the ball better than the average Tour Pro from this spot.";
+            } else if (uProb > 65) {
+                el.textContent = "Green Light! You have excellent odds here. Aim for the pin unless it's tucked behind a hazard.";
+            } else if (uProb > 45) {
+                el.textContent = "Good opportunity. You are statistically likely to hit the green, but center-mass is the smart play.";
+            } else if (uProb > 25) {
+                el.textContent = `Defensive Zone. Even a Pro only hits this ${Math.round(pProb)}% of the time. Aim for the widest part of the green.`;
+            } else {
+                el.textContent = "High Risk. The stats say you will miss this green 4 out of 5 times. Play to a safe landing area short or wide of the green.";
+            }
+        }
+
+        // --- 4. EVENTS ---
+
+        document.getElementById('hcp-input').addEventListener('input', (e) => {
+            state.hcp = parseInt(e.target.value);
+            
+            // Format Display for Plus Handicaps
+            let displayVal = state.hcp;
+            if (state.hcp < 0) {
+                displayVal = "+" + Math.abs(state.hcp);
+            }
+            
+            document.getElementById('hcp-val').textContent = displayVal;
+            updateUI();
+        });
+
+        document.getElementById('dist-input').addEventListener('input', (e) => {
+            state.dist = e.target.value;
+            document.getElementById('dist-val').textContent = state.dist;
+            updateUI();
+        });
+
+        window.setLie = function(lieName) {
+            state.lie = lieName;
+            document.querySelectorAll('.lie-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lie === lieName);
+            });
+            updateUI();
+        }
+
+        updateUI();
+
+    </script>
+</body>
+</html>
