@@ -248,6 +248,11 @@
                             <span id="gps-accuracy" class="text-[9px] text-slate-400 font-mono">GPS: --</span>
                         </div>
                     </div>
+                    
+                    <!-- Hidden Dropdown Section (Legacy support to prevent errors, keep hidden) -->
+                    <div id="hole-selection-container" class="hidden">
+                         <select id="course-selector"></select>
+                    </div>
                 </div>
             </div>
 
@@ -708,7 +713,6 @@
         };
 
         // --- WEATHER LOGIC (Open-Meteo) ---
-        // Enhanced to support Dual-Point fetching (User + Green)
         async function fetchWeather(lat, lon, greenLat = null, greenLon = null) {
             if (!window.state.isLoggedIn) return; // Only fetch if logged in
             
@@ -717,7 +721,6 @@
                 let url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=mph`;
                 
                 // If green coords are provided, fetch both points in one call
-                // Open-Meteo supports comma-separated coords: lat=lat1,lat2&lon=lon1,lon2
                 if (greenLat !== null && greenLon !== null) {
                      url = `https://api.open-meteo.com/v1/forecast?latitude=${lat},${greenLat}&longitude=${lon},${greenLon}&current=temperature_2m,wind_speed_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=mph`;
                 }
@@ -727,7 +730,7 @@
                 
                 const data = await res.json();
                 
-                // DATA PARSING: Open-Meteo returns array if multiple points requested, object if single.
+                // DATA PARSING
                 let userWeather, greenElev = null;
 
                 if (Array.isArray(data)) {
@@ -751,7 +754,6 @@
                         windDir: data.current.wind_direction_10m,
                         elevation: data.elevation || 0
                     };
-                    // Keep existing greenElev if we didn't fetch new one, or null
                 }
                 
                 window.state.weather = userWeather;
@@ -1003,9 +1005,11 @@
 
         function resetScanBtn() {
             const btn = document.getElementById('scan-btn');
-            document.getElementById('scan-icon').textContent = '📍';
-            document.getElementById('scan-text').textContent = 'Scan Nearby';
-            btn.disabled = false;
+            if(btn) {
+                document.getElementById('scan-icon').textContent = '📍';
+                document.getElementById('scan-text').textContent = 'Scan Nearby';
+                btn.disabled = false;
+            }
         }
 
         function startLiveTracking() {
@@ -1027,31 +1031,47 @@
         }
 
         async function fetchOverpassData(lat, lon, radius) {
-            // Added node["golf"="tee"] to query to capture explicit tee locations
-            const query = `[out:json][timeout:25];(way["golf"="course"](around:${radius},${lat},${lon});relation["golf"="course"](around:${radius},${lat},${lon});way["leisure"="golf_course"](around:${radius},${lat},${lon});relation["leisure"="golf_course"](around:${radius},${lat},${lon});way["golf"="hole"](around:${radius},${lat},${lon});node["golf"="green"](around:${radius},${lat},${lon});way["golf"="green"](around:${radius},${lat},${lon});node["golf"="pin"](around:${radius},${lat},${lon});node["golf"="tee"](around:${radius},${lat},${lon});way["golf"~"fairway|bunker|tee|water_hazard|rough"](around:${radius},${lat},${lon});way["natural"="water"](around:${radius},${lat},${lon}););out geom;`;
+            // REFACTORED TO FIX ALERT LOOP
+            // This function now just GETS data. It calls processMapData safely afterwards.
             
-            // Expanded list of public Overpass instances for better reliability
+            const query = `[out:json][timeout:45];(way["golf"="course"](around:${radius},${lat},${lon});relation["golf"="course"](around:${radius},${lat},${lon});way["leisure"="golf_course"](around:${radius},${lat},${lon});relation["leisure"="golf_course"](around:${radius},${lat},${lon});way["golf"="hole"](around:${radius},${lat},${lon});node["golf"="green"](around:${radius},${lat},${lon});way["golf"="green"](around:${radius},${lat},${lon});node["golf"="pin"](around:${radius},${lat},${lon});node["golf"="tee"](around:${radius},${lat},${lon});way["golf"~"fairway|bunker|tee|water_hazard|rough"](around:${radius},${lat},${lon});way["natural"="water"](around:${radius},${lat},${lon}););out geom;`;
+            
             const endpoints = [
                 "https://overpass-api.de/api/interpreter",
-                "https://lz4.overpass-api.de/api/interpreter",
                 "https://overpass.kumi.systems/api/interpreter",
-                "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+                "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+                "https://lz4.overpass-api.de/api/interpreter",
+                "https://overpass.openstreetmap.ru/api/interpreter"
             ];
 
+            let successData = null;
+
+            // 1. Try to connect
             for (const ep of endpoints) {
                 try {
                     console.log(`Trying map server: ${ep}`);
                     const res = await fetch(`${ep}?data=${encodeURIComponent(query)}`);
                     if(!res.ok) throw new Error(res.statusText);
-                    const data = await res.json();
-                    processMapData(data.elements);
-                    return; // Success, stop trying others
+                    successData = await res.json();
+                    break; // We have data! Exit loop.
                 } catch(e){
                     console.warn(`Failed to connect to ${ep}:`, e);
                 }
             }
-            alert("Could not connect to map server. All mirrors failed. Please try again in a minute.");
-            resetScanBtn();
+
+            // 2. Handle Result
+            if (successData) {
+                try {
+                    processMapData(successData.elements);
+                } catch(e) {
+                    console.error("CRITICAL APP ERROR: Data received, but processing failed.", e);
+                    alert("App Error: Found map data but could not display it. Check console.");
+                    resetScanBtn();
+                }
+            } else {
+                alert("Could not connect to map server. All mirrors failed. Please try again in a minute.");
+                resetScanBtn();
+            }
         }
 
         function processMapData(elements) {
@@ -1183,8 +1203,12 @@
             window.state.courses = rawCourses.filter(c=>c.holes.length>0).sort((a,b)=>a.dist-b.dist);
             
             renderCourseList();
-            document.getElementById('hole-selection-container').classList.add('hidden'); // Hide legacy wrapper if present
-            document.getElementById('course-list-container').classList.remove('hidden');
+            
+            // Safe toggle of elements
+            const legacySel = document.getElementById('hole-selection-container');
+            const newSel = document.getElementById('course-list-container');
+            if(legacySel) legacySel.classList.add('hidden');
+            if(newSel) newSel.classList.remove('hidden');
             
             resetScanBtn();
             checkAutoLie(window.state.userLat, window.state.userLon);
@@ -1274,6 +1298,7 @@
         // UI Updates
         function renderCourseList() {
             const list = document.getElementById('course-list');
+            if(!list) return; // Safety check
             list.innerHTML = '';
             
             if (window.state.courses.length === 0) {
@@ -1285,16 +1310,22 @@
                 const btn = document.createElement('button');
                 btn.className = "w-full text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 shadow-sm flex justify-between items-center transition-colors";
                 btn.onclick = () => selectCourse(i);
+                
+                // Safe formatting for name and distance
+                const name = c.name || "Unknown Course";
+                const distText = c.dist ? formatDist(c.dist) : "--";
+                const holeCount = c.holes ? c.holes.length : 0;
+
                 btn.innerHTML = `
                     <div class="flex items-center gap-3">
                         <div class="bg-golf-50 text-golf-600 rounded-lg p-2 font-bold text-lg">⛳</div>
                         <div>
-                            <h3 class="font-bold text-slate-800 text-sm leading-tight">${c.name}</h3>
-                            <p class="text-[10px] text-slate-400 mt-0.5">${c.holes.length} Holes detected</p>
+                            <h3 class="font-bold text-slate-800 text-sm leading-tight">${name}</h3>
+                            <p class="text-[10px] text-slate-400 mt-0.5">${holeCount} Holes detected</p>
                         </div>
                     </div>
                     <div class="text-right">
-                        <span class="text-xs font-bold text-slate-600 block">${formatDist(c.dist)}</span>
+                        <span class="text-xs font-bold text-slate-600 block">${distText}</span>
                         <span class="text-[9px] text-blue-400 uppercase tracking-wider font-semibold">Select</span>
                     </div>
                 `;
