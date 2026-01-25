@@ -248,11 +248,6 @@
                             <span id="gps-accuracy" class="text-[9px] text-slate-400 font-mono">GPS: --</span>
                         </div>
                     </div>
-                    
-                    <!-- Hidden Dropdown Section (Legacy support to prevent errors, keep hidden) -->
-                    <div id="hole-selection-container" class="hidden">
-                         <select id="course-selector"></select>
-                    </div>
                 </div>
             </div>
 
@@ -948,7 +943,8 @@
                     window.state.userLat = pos.coords.latitude;
                     window.state.userLon = pos.coords.longitude;
                     status.textContent = "Found location";
-                    fetchOverpassData(window.state.userLat, window.state.userLon, 16000);
+                    // UPDATED RADIUS to 20 miles (32200m)
+                    fetchOverpassData(window.state.userLat, window.state.userLon, 32200);
                     startLiveTracking();
                     // Fetch weather when location is found
                     if(window.state.isLoggedIn) fetchWeather(window.state.userLat, window.state.userLon);
@@ -984,7 +980,8 @@
                 
                 window.state.userLat = lat; window.state.userLon = lon;
                 status.textContent = "Searching area...";
-                fetchOverpassData(lat, lon, 24140);
+                // UPDATED RADIUS to 20 miles (32200m)
+                fetchOverpassData(lat, lon, 32200);
                 
                 // Fetch weather on Zip Search
                 if(window.state.isLoggedIn) fetchWeather(lat, lon);
@@ -1031,11 +1028,11 @@
         }
 
         async function fetchOverpassData(lat, lon, radius) {
-            // REFACTORED TO FIX ALERT LOOP
-            // This function now just GETS data. It calls processMapData safely afterwards.
-            
+            // Added node["golf"="tee"] to query to capture explicit tee locations
+            // Increased timeout to 45s
             const query = `[out:json][timeout:45];(way["golf"="course"](around:${radius},${lat},${lon});relation["golf"="course"](around:${radius},${lat},${lon});way["leisure"="golf_course"](around:${radius},${lat},${lon});relation["leisure"="golf_course"](around:${radius},${lat},${lon});way["golf"="hole"](around:${radius},${lat},${lon});node["golf"="green"](around:${radius},${lat},${lon});way["golf"="green"](around:${radius},${lat},${lon});node["golf"="pin"](around:${radius},${lat},${lon});node["golf"="tee"](around:${radius},${lat},${lon});way["golf"~"fairway|bunker|tee|water_hazard|rough"](around:${radius},${lat},${lon});way["natural"="water"](around:${radius},${lat},${lon}););out geom;`;
             
+            // Expanded list of public Overpass instances for better reliability
             const endpoints = [
                 "https://overpass-api.de/api/interpreter",
                 "https://overpass.kumi.systems/api/interpreter",
@@ -1044,34 +1041,20 @@
                 "https://overpass.openstreetmap.ru/api/interpreter"
             ];
 
-            let successData = null;
-
-            // 1. Try to connect
             for (const ep of endpoints) {
                 try {
                     console.log(`Trying map server: ${ep}`);
                     const res = await fetch(`${ep}?data=${encodeURIComponent(query)}`);
                     if(!res.ok) throw new Error(res.statusText);
-                    successData = await res.json();
-                    break; // We have data! Exit loop.
+                    const data = await res.json();
+                    processMapData(data.elements);
+                    return; // Success, stop trying others
                 } catch(e){
                     console.warn(`Failed to connect to ${ep}:`, e);
                 }
             }
-
-            // 2. Handle Result
-            if (successData) {
-                try {
-                    processMapData(successData.elements);
-                } catch(e) {
-                    console.error("CRITICAL APP ERROR: Data received, but processing failed.", e);
-                    alert("App Error: Found map data but could not display it. Check console.");
-                    resetScanBtn();
-                }
-            } else {
-                alert("Could not connect to map server. All mirrors failed. Please try again in a minute.");
-                resetScanBtn();
-            }
+            alert("Could not connect to map server. All mirrors failed. Please try again in a minute.");
+            resetScanBtn();
         }
 
         function processMapData(elements) {
@@ -1203,12 +1186,8 @@
             window.state.courses = rawCourses.filter(c=>c.holes.length>0).sort((a,b)=>a.dist-b.dist);
             
             renderCourseList();
-            
-            // Safe toggle of elements
-            const legacySel = document.getElementById('hole-selection-container');
-            const newSel = document.getElementById('course-list-container');
-            if(legacySel) legacySel.classList.add('hidden');
-            if(newSel) newSel.classList.remove('hidden');
+            document.getElementById('hole-selection-container').classList.add('hidden'); // Hide legacy wrapper if present
+            document.getElementById('course-list-container').classList.remove('hidden');
             
             resetScanBtn();
             checkAutoLie(window.state.userLat, window.state.userLon);
