@@ -1030,17 +1030,27 @@
             // Added node["golf"="tee"] to query to capture explicit tee locations
             const query = `[out:json][timeout:25];(way["golf"="course"](around:${radius},${lat},${lon});relation["golf"="course"](around:${radius},${lat},${lon});way["leisure"="golf_course"](around:${radius},${lat},${lon});relation["leisure"="golf_course"](around:${radius},${lat},${lon});way["golf"="hole"](around:${radius},${lat},${lon});node["golf"="green"](around:${radius},${lat},${lon});way["golf"="green"](around:${radius},${lat},${lon});node["golf"="pin"](around:${radius},${lat},${lon});node["golf"="tee"](around:${radius},${lat},${lon});way["golf"~"fairway|bunker|tee|water_hazard|rough"](around:${radius},${lat},${lon});way["natural"="water"](around:${radius},${lat},${lon}););out geom;`;
             
-            const endpoints = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+            // Expanded list of public Overpass instances for better reliability
+            const endpoints = [
+                "https://overpass-api.de/api/interpreter",
+                "https://lz4.overpass-api.de/api/interpreter",
+                "https://overpass.kumi.systems/api/interpreter",
+                "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+            ];
+
             for (const ep of endpoints) {
                 try {
+                    console.log(`Trying map server: ${ep}`);
                     const res = await fetch(`${ep}?data=${encodeURIComponent(query)}`);
-                    if(!res.ok) throw new Error();
+                    if(!res.ok) throw new Error(res.statusText);
                     const data = await res.json();
                     processMapData(data.elements);
-                    return;
-                } catch(e){}
+                    return; // Success, stop trying others
+                } catch(e){
+                    console.warn(`Failed to connect to ${ep}:`, e);
+                }
             }
-            alert("Could not connect to map server.");
+            alert("Could not connect to map server. All mirrors failed. Please try again in a minute.");
             resetScanBtn();
         }
 
