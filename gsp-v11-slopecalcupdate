@@ -484,7 +484,6 @@
     };
 
     // --- GOLF DATA CONSTANTS ---
-    // Defined early so they are available to functions
     const baselines = {
         fairway: { 50: 97, 75: 93, 100: 88, 125: 81, 150: 73, 175: 64, 200: 54, 225: 43, 250: 32, 300: 15 },
         rough: { 50: 88, 75: 82, 100: 72, 125: 60, 150: 48, 175: 37, 200: 28, 225: 20, 250: 12, 300: 5 },
@@ -1637,4 +1636,3 @@
 </script>
 </body>
 </html>
-
