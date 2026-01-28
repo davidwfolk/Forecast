@@ -1158,12 +1158,6 @@
 
 
         window.state.courses = rawCourses.filter(c=>c.holes.length>0).sort((a,b)=>a.dist-b.dist);
-        
-        // --- ADD THIS TRIGGER RIGHT HERE ---
-        if (window.state.courses.length > 0) {
-             // Save the closest course (index 0) along with the polygons
-             saveCourseToSupabase(window.state.courses[0], window.state.polygons);
-        }
 
         renderCourseList();
         
@@ -1290,13 +1284,20 @@
         });
     }
 
-    window.selectCourse = function(idx) {
+window.selectCourse = function(idx) {
         if (idx === undefined) return;
         
         const holeCard = document.getElementById('hole-info-card');
         
         window.state.selectedCourseIndex = idx;
         const course = window.state.courses[idx];
+
+        // --- NEW: SAVE SELECTED COURSE TO SUPABASE ---
+        // We pass the specific course selected, and the full list of polygons.
+        // The save function's internal logic will filter polygons relevant to this course.
+        saveCourseToSupabase(course, window.state.polygons);
+        // ---------------------------------------------
+
         window.state.selectedTee = 'default';
         
         document.getElementById('compact-course-name').textContent = course.name;
