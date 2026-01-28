@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ForeCast by Full Stack Golf</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        golf: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            800: '#166534',
+                            900: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #f0fdf4 0%, #e2e8f0 100%);
+            background-attachment: fixed;
+        }
+
+        /* Modern Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid #16a34a;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            transition: transform 0.1s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 99px;
+        }
+
+        /* Active State for Slider Track */
+        input[type=range]:focus::-webkit-slider-runnable-track {
+            background: #cbd5e1;
+        }
+
+        /* Pulse Animation for Live Badge */
+        @keyframes pulse-dot {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        .live-indicator {
+            animation: pulse-dot 2s infinite;
+        }
+
+        /* Circular Progress Bar */
+        .progress-circle {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: conic-gradient(var(--bar-color, #16a34a) var(--progress), #f1f5f9 0deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+            transition: background 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .progress-inner {
+            width: 110px;
+            height: 110px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 2px solid #ffffff;
+            width: 16px;
+            height: 16px;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Wind Arrow Rotation */
+        .wind-arrow {
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Smooth Transitions */
+        .transition-all-200 { transition: all 0.2s ease-in-out; }
+        
+        /* Fade In Animation */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex items-center justify-center py-4 px-4">
+
+    <!-- App Container -->
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col h-full max-h-[95vh] overflow-y-auto">
+        
+        <!-- Header -->
+        <div class="bg-golf-900 p-4 text-white text-center relative overflow-hidden shrink-0">
+            <!-- Decorative background element -->
+            <div class="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+            
+            <div class="relative z-10 flex justify-between items-center">
+                <div class="text-left">
+                    <h1 class="text-lg font-display font-bold tracking-wide">ForeCast</h1>
+                    <p class="text-golf-100 text-[10px] uppercase tracking-widest mt-0.5 opacity-80">by Full Stack Golf</p>
+                </div>
+                
+                <!-- Profile / Login Status -->
+                <div class="flex items-center gap-2">
+                    <!-- Bag / Menu Button (Hidden unless logged in) -->
+                    <button id="bag-btn" onclick="openBagModal()" class="hidden text-white/80 hover:text-white p-1.5 transition-colors focus:outline-none" title="My Bag">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    </button>
+
+                    <!-- Sign In Button (Visible by default) -->
+                    <button id="login-btn" onclick="handleLogin()" class="text-xs font-bold text-golf-900 bg-white hover:bg-golf-50 px-3 py-1.5 rounded-lg transition-all shadow-md active:scale-95">
+                        Sign In
+                    </button>
+
+                    <!-- User Profile (Hidden by default) -->
+                    <button id="user-profile" class="hidden flex items-center gap-2 bg-white/10 px-2 py-1 rounded-lg backdrop-blur-md border border-white/20 cursor-pointer hover:bg-white/20 transition-colors focus:outline-none" onclick="handleLogout()">
+                        <!-- Avatar Image or Initials -->
+                        <img id="user-avatar-img" class="hidden w-6 h-6 rounded-full border border-emerald-400 shadow-inner" src="" alt="Profile" />
+                        <div id="user-avatar-text" class="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] text-white font-bold shadow-inner border border-emerald-400">G</div>
+                        <span id="user-name" class="text-[10px] font-medium text-white pr-1">Guest</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Live Badge -->
+            <div id="live-badge" class="hidden absolute top-3 left-1/2 transform -translate-x-1/2 flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/20 px-2 py-0.5 rounded-full">
+                <div class="w-1.5 h-1.5 bg-green-400 rounded-full live-indicator"></div>
+                <span class="text-[8px] font-bold text-green-100 uppercase tracking-wider">Live</span>
+            </div>
+        </div>
+
+        <!-- Main Scrollable Content -->
+        <div class="p-4 space-y-4 flex-1">
+
+            <!-- 1. COURSE FINDER CARD -->
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm relative transition-all duration-300" id="course-finder-card">
+                
+                <!-- COMPACT VIEW (Hidden by default) -->
+                <div id="finder-compact" class="hidden flex justify-between items-center cursor-pointer group" onclick="toggleFinder(true)">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-white p-2 rounded-full shadow-sm text-base">⛳</div>
+                        <div>
+                            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Playing At</p>
+                            <h2 id="compact-course-name" class="font-display font-bold text-slate-800 text-base leading-tight">--</h2>
+                        </div>
+                    </div>
+                    <button class="text-[10px] font-semibold text-golf-600 bg-white px-3 py-1.5 rounded-lg border border-slate-100 shadow-sm hover:bg-slate-50 transition-colors">Change</button>
+                </div>
+
+                <!-- EXPANDED VIEW -->
+                <div id="finder-expanded">
+                    <div class="flex justify-between items-center mb-3">
+                        <label class="font-display font-bold text-slate-700 text-sm flex items-center gap-1">
+                            <svg class="w-4 h-4 text-golf-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            Course Finder
+                        </label>
+                        <div class="flex items-center gap-2">
+                            <span id="scan-status" class="text-[10px] text-slate-400 font-medium">Ready</span>
+                            <!-- Collapse Button (Hidden initially) -->
+                            <button id="finder-collapse-btn" onclick="toggleFinder(false)" class="hidden text-slate-400 hover:text-slate-600 p-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Primary Action -->
+                    <button onclick="scanForCourses()" id="scan-btn" class="w-full bg-golf-600 hover:bg-golf-500 text-white font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all-200 shadow-md shadow-green-900/10 active:scale-[0.98] text-sm">
+                        <span id="scan-icon" class="text-lg">📍</span> 
+                        <span id="scan-text">Scan Nearby</span>
+                    </button>
+
+                    <!-- Clean Zip Search Toggle -->
+                    <div class="text-center mt-3">
+                        <button onclick="toggleZipSearch()" id="zip-toggle-btn" class="text-[10px] text-slate-400 font-bold uppercase tracking-wider hover:text-golf-600 transition-colors underline">
+                            Not at the course? Search by Zip
+                        </button>
+                    </div>
+
+                    <!-- Zip Search Input (Hidden by default) -->
+                    <div id="zip-search-container" class="hidden mt-2 pt-2 border-t border-slate-200/60 animate-fade-in">
+                        <div class="flex gap-2">
+                            <input type="text" id="zip-input" placeholder="Zip Code (e.g. 90210)" class="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:border-golf-500 focus:ring-2 focus:ring-golf-100 outline-none transition-all-200">
+                            <button onclick="searchByZip()" id="zip-btn" class="bg-slate-700 hover:bg-slate-600 text-white font-medium px-3 py-1.5 rounded-lg text-xs transition-all-200">Search</button>
+                        </div>
+                    </div>
+
+                    <!-- NEW: Course List Container (Replaces Dropdown) -->
+                    <div id="course-list-container" class="hidden mt-4 space-y-2 animate-fade-in">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase tracking-wider pl-1">Select Course</label>
+                        <div id="course-list" class="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+                            <!-- Tap-to-select cards injected here -->
+                        </div>
+                        
+                        <!-- Mini Footer Info -->
+                        <div class="flex justify-between items-center px-1 pt-1 border-t border-slate-100 mt-2">
+                            <span class="text-[9px] text-golf-600 font-semibold bg-golf-50 px-2 py-0.5 rounded-md">Auto-Lie Active</span>
+                            <span id="gps-accuracy" class="text-[9px] text-slate-400 font-mono">GPS: --</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. NEW HOLE INFO CARD (Compact) -->
+            <div id="hole-info-card" class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-3 text-white shadow-lg relative overflow-hidden hidden animate-fade-in">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-8 -mt-8 blur-xl"></div>
+                
+                <!-- Row 1: Nav & Par -->
+                <div class="flex justify-between items-center relative z-10 mb-2">
+                    <!-- Left Arrow -->
+                    <button onclick="changeHole(-1)" class="p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors active:scale-95">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+
+                    <!-- Hole & Par Display -->
+                    <div class="text-center">
+                        <h2 id="hole-display-num" class="text-lg font-display font-bold">Hole 1</h2>
+                        <p id="hole-display-par" class="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Par 4</p>
+                    </div>
+
+                    <!-- Right Arrow -->
+                    <button onclick="changeHole(1)" class="p-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors active:scale-95">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+
+                <!-- Row 2: Big Yardage -->
+                <div class="text-center relative z-10 border-t border-white/10 pt-2">
+                    <div id="hole-display-yards" class="text-3xl font-display font-bold tracking-tight text-white">---</div>
+                    <p class="text-[9px] text-slate-400 uppercase tracking-wider mt-0.5">Distance to Pin</p>
+                </div>
+            </div>
+
+            <!-- 3. HANDICAP & DISTANCE SLIDERS -->
+            <div class="grid grid-cols-1 gap-4">
+                <!-- Handicap (Wrapper for Guest Mode) -->
+                <div id="dashboard-hcp-wrapper">
+                    <!-- This entire block moves to the modal when logged in -->
+                    <div id="hcp-component">
+                        <div class="flex justify-between mb-1.5">
+                            <label class="font-display font-bold text-slate-700 text-xs">Handicap</label>
+                            <span id="hcp-val" class="font-mono bg-slate-800 text-white px-1.5 py-0.5 rounded text-[10px] font-bold shadow-sm">10</span>
+                        </div>
+                        <input type="range" id="hcp-input" min="-7" max="36" value="10" step="1" class="accent-golf-600">
+                        <div class="flex justify-between text-[9px] text-slate-400 mt-0.5 font-medium px-1">
+                            <span>+7 (Pro)</span>
+                            <span>36</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Distance (Manual Override) -->
+                <div>
+                    <div class="flex justify-between mb-1.5">
+                        <label class="font-display font-bold text-slate-700 text-xs">Distance</label>
+                        <div class="flex items-center gap-2">
+                            <!-- Reset Button (Hidden by default) -->
+                            <button id="reset-dist-btn" class="hidden text-[9px] text-golf-600 font-bold uppercase hover:underline transition-all" onclick="resetDistance()">
+                                Reset GPS
+                            </button>
+                            <span class="font-mono bg-golf-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold shadow-sm"><span id="dist-val">150</span> yds</span>
+                        </div>
+                    </div>
+                    <input type="range" id="dist-input" min="50" max="300" value="150" step="1">
+                    <div class="flex justify-between text-[9px] text-slate-400 mt-0.5 font-medium px-1">
+                        <span>50y</span>
+                        <span>300y</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. LIE SELECTION -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex items-center gap-2">
+                        <label class="font-display font-bold text-slate-700 text-xs">Lie Condition</label>
+                        <button id="reset-lie-btn" class="hidden text-[9px] text-golf-600 font-bold uppercase hover:underline transition-all" onclick="resetLie()">
+                            Reset Auto
+                        </button>
+                    </div>
+                    <span id="auto-lie-badge" class="hidden text-[9px] bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Auto-Detected</span>
+                </div>
+                
+                <div class="grid grid-cols-4 gap-2 bg-slate-100 p-1 rounded-xl">
+                    <button class="lie-btn relative rounded-lg py-1.5 text-[9px] font-bold uppercase tracking-wide transition-all-200 hover:text-golf-700 focus:outline-none" 
+                            data-lie="fairway" onclick="setLie('fairway', false)">
+                        Fairway
+                    </button>
+                    <button class="lie-btn relative rounded-lg py-1.5 text-[9px] font-bold uppercase tracking-wide transition-all-200 hover:text-golf-700 focus:outline-none" 
+                            data-lie="rough" onclick="setLie('rough', false)">
+                        Rough
+                    </button>
+                    <button class="lie-btn relative rounded-lg py-1.5 text-[9px] font-bold uppercase tracking-wide transition-all-200 hover:text-golf-700 focus:outline-none" 
+                            data-lie="bunker" onclick="setLie('bunker', false)">
+                        Bunker
+                    </button>
+                    <button class="lie-btn relative rounded-lg py-1.5 text-[9px] font-bold uppercase tracking-wide transition-all-200 hover:text-golf-700 focus:outline-none" 
+                            data-lie="recovery" onclick="setLie('recovery', false)">
+                        Recov
+                    </button>
+                </div>
+            </div>
+
+            <!-- 5. RESULTS DASHBOARD -->
+            <div class="bg-white rounded-2xl flex flex-col items-center p-3 border border-slate-100 shadow-sm">
+                
+                <!-- Weather Widget (Logged In Only) -->
+                <div id="weather-widget" class="hidden w-full mb-3 bg-blue-50/50 border border-blue-100 rounded-xl p-2 flex items-center justify-between animate-fade-in">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-blue-100 p-1.5 rounded-lg text-blue-600">
+                            <!-- Weather Icon -->
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-[9px] text-blue-400 font-bold uppercase tracking-wider">Conditions</p>
+                            <p id="weather-temp" class="text-xs font-bold text-slate-700">--°F</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 pr-1">
+                        <!-- Added Elevation Display - Removed 'hidden sm:block' so it shows on mobile -->
+                        <div class="text-center">
+                            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Elev</p>
+                            <p id="weather-elev" class="text-xs font-bold text-slate-700">-- ft</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Wind</p>
+                            <p id="weather-wind" class="text-xs font-bold text-slate-700">-- mph</p>
+                        </div>
+                        <!-- Wind Direction Arrow -->
+                        <div id="wind-arrow-icon" class="wind-arrow bg-white shadow-sm border border-slate-200 rounded-full w-6 h-6 flex items-center justify-center transform rotate-0">
+                            <svg class="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MOVED UP: Dynamic Advice / Club Recommendation -->
+                <div id="analysis-text" class="w-full mb-4 p-0 border border-slate-100 rounded-xl min-h-[60px] flex items-center justify-center shadow-sm overflow-hidden bg-slate-50">
+                    <div class="p-4 w-full h-full flex items-center justify-center">
+                             <p class="text-xs text-slate-600 font-medium leading-relaxed text-center">
+                                Adjust settings to see your shot analysis.
+                            </p>
+                    </div>
+                </div>
+
+                <!-- MOVED DOWN: Circular Gauge -->
+                <div class="progress-circle mb-3" id="prob-circle">
+                    <div class="progress-inner">
+                        <span class="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">GIR %</span>
+                        <span id="prob-display" class="text-3xl font-display font-bold text-slate-800">--%</span>
+                        <div class="h-1 w-6 bg-slate-100 rounded-full mt-1.5"></div>
+                    </div>
+                </div>
+
+                <!-- MOVED DOWN: Analysis Card -->
+                <div class="w-full space-y-3">
+                    <!-- Pro Comparison -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-end text-[10px] px-1">
+                            <span class="text-slate-500 font-medium">Tour Pro Baseline</span>
+                            <span id="pro-val" class="font-bold text-slate-700">--%</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
+                            <div id="pro-bar" class="bg-slate-300 h-1 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        
+        <!-- Footer -->
+        <div class="bg-slate-50 p-2 text-center border-t border-slate-100 shrink-0">
+            <p class="text-[9px] text-slate-400">Data powered by OSM & PGA Tour Baselines | Weather data by Open-Meteo.com</p>
+        </div>
+    </div>
+
+    <!-- BAG MODAL (Hidden by default) -->
+    <div id="bag-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            
+            <!-- Modal Header -->
+            <div class="bg-golf-900 p-4 text-white flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    <h2 class="font-display font-bold text-lg">My Bag</h2>
+                </div>
+                <button onclick="closeBagModal()" class="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Modal Content (Scrollable) -->
+            <div class="p-4 overflow-y-auto flex-1 space-y-4" id="bag-modal-content">
+                <!-- Handicap Target (Wrapper for logged in state) -->
+                <div id="modal-hcp-wrapper" class="pb-2 border-b border-slate-100 empty:hidden"></div>
+                
+                <!-- Dynamic Inputs Wrapper -->
+                <div id="bag-inputs-list"></div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-slate-100 bg-slate-50 shrink-0">
+                <button onclick="saveBagData()" class="w-full bg-golf-600 hover:bg-golf-500 text-white font-bold py-3 rounded-xl shadow-md active:scale-95 transition-all text-sm flex justify-center items-center gap-2">
+                    <span>Save Distances</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIC SCRIPT -->
+<script type="module">
+    // 1. IMPORT SUPABASE
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+    // ---------------------------------------------------------
+    // CONFIGURE YOUR APP HERE
+    // ---------------------------------------------------------
+    const sbUrl = 'https://fltpoxmprxcuflnweqdp.supabase.co'; 
+    const sbKey = 'sb_publishable_cbOc1JtOwxDeE5-txTT5Fw_NDLPTB-j';
+    const supabase = createClient(sbUrl, sbKey);
+    // ---------------------------------------------------------
+
+    // Global State
+    window.state = {
+        hcp: 10, dist: 150, lie: 'fairway',
+        userLat: null, userLon: null,
+        courses: [], selectedCourseIndex: null, currentHoleIndex: 0,
+        selectedTee: 'default', manualDistance: false, manualLie: false,
+        polygons: [], watchId: null,
+        clubs: {}, clubTypes: {},
+        isLoggedIn: false, user: null,
+        weather: null, greenElevation: null, isOnTee: false
+    };
+
+    // --- GOLF DATA CONSTANTS ---
+    const baselines = {
+        fairway: { 50: 97, 75: 93, 100: 88, 125: 81, 150: 73, 175: 64, 200: 54, 225: 43, 250: 32, 300: 15 },
+        rough: { 50: 88, 75: 82, 100: 72, 125: 60, 150: 48, 175: 37, 200: 28, 225: 20, 250: 12, 300: 5 },
+        bunker: { 50: 80, 75: 70, 100: 60, 125: 48, 150: 35, 175: 25, 200: 15, 225: 8, 250: 3, 300: 1 },
+        recovery: { 50: 50, 75: 30, 100: 15, 125: 5, 150: 2, 175: 1, 200: 0, 225: 0, 250: 0, 300: 0 }
+    };
+
+    const clubList = [
+        { id: 'driver', name: 'Driver', default: 230 },
+        { id: 'wood3', name: '3 Wood', default: 210, options: ['3 Wood', 'Mini Driver'] },
+        { id: 'wood5', name: '5 Wood', default: 200, options: ['5 Wood', 'Driving Iron', '3 Hybrid', '4 Hybrid', '7 Wood'] },
+        { id: 'hybrid', name: 'Hybrid', default: 190, options: ['Hybrid', 'Driving Iron', '3 Hybrid', '4 Hybrid', '3 Iron'] },
+        { id: 'iron4', name: '4 Iron', default: 180, options: ['4 Iron', '4 Hybrid'] },
+        { id: 'iron5', name: '5 Iron', default: 170, options: ['5 Iron', '5 Hybrid'] },
+        { id: 'iron6', name: '6 Iron', default: 160 },
+        { id: 'iron7', name: '7 Iron', default: 150 },
+        { id: 'iron8', name: '8 Iron', default: 140 },
+        { id: 'iron9', name: '9 Iron', default: 130 },
+        { id: 'pw', name: 'Pitching Wedge', default: 120 },
+        { id: 'gw', name: 'Gap Wedge', default: 105 },
+        { id: 'sw', name: 'Sand Wedge', default: 90 },
+        { id: 'lw', name: 'Lob Wedge', default: 75 }
+    ];
+
+    // --- SUPABASE AUTH & DATA LOGIC ---
+
+    // 1. Auth Listener
+    async function initAuth() {
+        const { data: { session } } = await supabase.auth.getSession();
+        handleUserSession(session);
+
+        supabase.auth.onAuthStateChange((_event, session) => {
+            handleUserSession(session);
+        });
+    }
+
+    // 2. Session Handler
+    function handleUserSession(session) {
+        if (session) {
+            window.state.user = session.user;
+            window.state.isLoggedIn = true;
+            
+            const name = session.user.user_metadata.full_name || "Golfer";
+            const avatar = session.user.user_metadata.avatar_url;
+            setProfileUI(name, avatar); 
+            
+            loadProfileSettings(); 
+            
+            if(window.state.userLat && window.fetchWeather) fetchWeather(window.state.userLat, window.state.userLon);
+
+        } else {
+            window.state.user = null;
+            window.state.isLoggedIn = false;
+
+            const loginBtn = document.getElementById('login-btn');
+            const userProfile = document.getElementById('user-profile');
+            const bagBtn = document.getElementById('bag-btn');
+            
+            if(loginBtn) loginBtn.classList.remove('hidden');
+            if(userProfile) {
+                userProfile.classList.add('hidden');
+                userProfile.classList.remove('flex');
+            }
+            if(bagBtn) bagBtn.classList.add('hidden');
+        }
+        if(window.updateUI) window.updateUI();
+    }
+
+    // 3. Login Function
+    window.handleLogin = async function() {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { queryParams: { access_type: 'offline', prompt: 'consent' } },
+        });
+        if (error) alert("Login Error: " + error.message);
+    }
+
+    // 4. Logout Function
+    window.handleLogout = async function() {
+        if(confirm("Sign out?")) {
+            await supabase.auth.signOut();
+            window.location.reload(); 
+        }
+    }
+
+    // 5. Load Data Function
+    async function loadProfileSettings() {
+        if (!window.state.user) return;
+        
+        const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', window.state.user.id)
+            .single();
+
+        if (data) {
+            if (data.handicap !== null) {
+                window.state.hcp = data.handicap;
+                const hcpInput = document.getElementById('hcp-input');
+                const hcpVal = document.getElementById('hcp-val');
+                if(hcpInput) hcpInput.value = window.state.hcp;
+                if(hcpVal) hcpVal.textContent = window.state.hcp < 0 ? "+" + Math.abs(window.state.hcp) : window.state.hcp;
+            }
+            if (data.bag_data) {
+                if (data.bag_data.clubs) window.state.clubs = data.bag_data.clubs;
+                if (data.bag_data.types) window.state.clubTypes = data.bag_data.types;
+            }
+            if(window.updateUI) window.updateUI();
+        }
+    }
+
+    // 6. Save User Settings (Generic)
+    let saveTimeout;
+    function saveUserSetting(key, value) {
+        if (!window.state.user) return;
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(async () => {
+            const updateObj = {}; 
+            updateObj[key] = value; 
+            await supabase.from('profiles').update(updateObj).eq('id', window.state.user.id);
+        }, 800);
+    }
+
+    // 7. Save Bag Data (Supabase Implementation)
+    window.saveBagData = async function() {
+        const newClubs = {};
+        const newTypes = {};
+        
+        // Collect data from inputs
+        if(typeof clubList !== 'undefined') {
+            clubList.forEach(club => {
+                const input = document.getElementById(`input-${club.id}`);
+                const typeInput = document.getElementById(`type-${club.id}`);
+                if (input && input.value) newClubs[club.id] = parseInt(input.value);
+                if (typeInput && typeInput.value) newTypes[club.id] = typeInput.value;
+            });
+        }
+
+        window.state.clubs = newClubs;
+        window.state.clubTypes = newTypes;
+
+        if (window.state.user) {
+            const bagPayload = { clubs: newClubs, types: newTypes };
+            const { error } = await supabase
+                .from('profiles')
+                .update({ bag_data: bagPayload })
+                .eq('id', window.state.user.id);
+            
+            if (error) alert("Error: " + error.message); 
+            else alert("Bag saved!");
+        } else {
+            alert("Bag updated locally (Login to save permanently).");
+        }
+        
+        if(window.closeBagModal) window.closeBagModal();
+        if(window.updateUI) window.updateUI();
+    }
+
+    // 8. UI Helper
+    function setProfileUI(name, photoURL) {
+        const loginBtn = document.getElementById('login-btn');
+        const profileDiv = document.getElementById('user-profile');
+        const avatarImg = document.getElementById('user-avatar-img');
+        const avatarText = document.getElementById('user-avatar-text');
+        const nameSpan = document.getElementById('user-name');
+        const bagBtn = document.getElementById('bag-btn');
+
+        loginBtn.classList.add('hidden');
+        profileDiv.classList.remove('hidden');
+        profileDiv.classList.add('flex');
+        bagBtn.classList.remove('hidden'); 
+        
+        nameSpan.textContent = name.split(' ')[0]; 
+        
+        if (photoURL) {
+            avatarImg.src = photoURL;
+            avatarImg.classList.remove('hidden');
+            avatarText.classList.add('hidden');
+        } else {
+            avatarImg.classList.add('hidden');
+            avatarText.classList.remove('hidden');
+            avatarText.textContent = name.charAt(0).toUpperCase();
+        }
+    }
+
+    // Start Auth Listener
+    initAuth();
+
+    // --- NEW: SAVE MAP DATA TO SUPABASE ---
+    async function saveCourseToSupabase(course, polygons) {
+        if (!course || !course.id) return;
+        
+        // Check if course exists
+        const { data: existing } = await supabase.from('courses').select('id').eq('osm_id', course.id.toString()).single();
+        if (existing) { console.log("Course exists in DB."); return; }
+
+        console.log("Saving New Course...");
+        
+        // Insert Course
+        const { data: newCourse, error: courseErr } = await supabase.from('courses').insert({
+            name: course.name,
+            osm_id: course.id.toString(),
+            location: `POINT(${course.lon} ${course.lat})`
+        }).select().single();
+
+        if (courseErr) { console.error("DB Error:", courseErr); return; }
+        const courseId = newCourse.id;
+
+        // Insert Holes
+        const holeRows = course.holes.map(h => ({
+            course_id: courseId,
+            hole_number: h.sortRef || 0,
+            par: parseInt(h.pars.default) || 4,
+            green_center: `POINT(${h.lon} ${h.lat})`,
+            tee_box: h.teeLocation ? `POINT(${h.teeLocation.lon} ${h.teeLocation.lat})` : null
+        }));
+        await supabase.from('holes').insert(holeRows);
+
+        // Insert Polygons (filtered by distance)
+        const distFn = window.calcDist || ((lat1,lon1,lat2,lon2) => {
+             const R=6371e3, φ1=lat1*Math.PI/180, φ2=lat2*Math.PI/180, Δφ=(lat2-lat1)*Math.PI/180, Δλ=(lon2-lon1)*Math.PI/180;
+             const a=Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+             return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))*1.09361;
+        });
+
+        const relevantPolys = polygons.filter(p => {
+            return distFn(course.lat, course.lon, p.points[0].lat, p.points[0].lon) < 2500; 
+        });
+
+        const featureRows = relevantPolys.map(p => {
+            const coords = p.points.map(pt => `${pt.lon} ${pt.lat}`);
+            if (coords[0] !== coords[coords.length-1]) coords.push(coords[0]); 
+            return {
+                course_id: courseId,
+                type: p.type,
+                geom: `POLYGON((${coords.join(',')}))`
+            };
+        });
+        
+        if (featureRows.length > 0) await supabase.from('course_features').insert(featureRows);
+        console.log("Course Saved Successfully!");
+    }
+
+    // --- WEATHER LOGIC (Open-Meteo) ---
+    async function fetchWeather(lat, lon, greenLat = null, greenLon = null) {
+        if (!window.state.isLoggedIn) return; // Only fetch if logged in
+        
+        try {
+            // Base URL for single point (User)
+            let url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=mph`;
+            
+            // If green coords are provided, fetch both points in one call
+            if (greenLat !== null && greenLon !== null) {
+                    url = `https://api.open-meteo.com/v1/forecast?latitude=${lat},${greenLat}&longitude=${lon},${greenLon}&current=temperature_2m,wind_speed_10m,wind_direction_10m&temperature_unit=fahrenheit&wind_speed_unit=mph`;
+            }
+
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("Weather API Error");
+            
+            const data = await res.json();
+            
+            // DATA PARSING
+            let userWeather, greenElev = null;
+
+            if (Array.isArray(data)) {
+                // Index 0 = User, Index 1 = Green
+                const userData = data[0];
+                const greenData = data[1];
+                
+                userWeather = {
+                    temp: Math.round(userData.current.temperature_2m),
+                    windSpeed: Math.round(userData.current.wind_speed_10m),
+                    windDir: userData.current.wind_direction_10m,
+                    elevation: userData.elevation || 0
+                };
+                greenElev = greenData.elevation || 0;
+                
+            } else {
+                // Single point response
+                userWeather = {
+                    temp: Math.round(data.current.temperature_2m),
+                    windSpeed: Math.round(data.current.wind_speed_10m),
+                    windDir: data.current.wind_direction_10m,
+                    elevation: data.elevation || 0
+                };
+            }
+            
+            window.state.weather = userWeather;
+            if (greenElev !== null) window.state.greenElevation = greenElev;
+            
+            updateUI();
+            
+        } catch (e) {
+            console.error("Weather fetch failed:", e);
+        }
+    }
+    
+    // MANUAL TRIGGER FOR TESTING
+    window.forceWeatherUpdate = async function(btn) {
+        if(btn) btn.classList.add('animate-spin');
+        
+        let greenLat = null, greenLon = null;
+        if (window.state.selectedCourseIndex !== null) {
+            const course = window.state.courses[window.state.selectedCourseIndex];
+            const hole = course.holes[window.state.currentHoleIndex];
+            greenLat = hole.lat;
+            greenLon = hole.lon;
+        }
+
+        if(window.state.userLat && window.state.userLon) {
+            console.log("Forcing Weather Update...");
+            await fetchWeather(window.state.userLat, window.state.userLon, greenLat, greenLon);
+        } else {
+            alert("No GPS location.");
+        }
+        
+        if(btn) setTimeout(() => btn.classList.remove('animate-spin'), 500);
+    }
+
+    // --- BEARING HELPER ---
+    function getBearing(startLat, startLon, destLat, destLon) {
+        const startLatRad = startLat * Math.PI / 180;
+        const startLonRad = startLon * Math.PI / 180;
+        const destLatRad = destLat * Math.PI / 180;
+        const destLonRad = destLon * Math.PI / 180;
+
+        const y = Math.sin(destLonRad - startLonRad) * Math.cos(destLatRad);
+        const x = Math.cos(startLatRad) * Math.sin(destLatRad) -
+                Math.sin(startLatRad) * Math.cos(destLatRad) * Math.cos(destLonRad - startLonRad);
+        const brng = Math.atan2(y, x);
+        return (brng * 180 / Math.PI + 360) % 360;
+    }
+
+    // --- BAG / MODAL LOGIC ---
+
+    window.openBagModal = function() {
+        const modal = document.getElementById('bag-modal');
+        const container = document.getElementById('bag-inputs-list');
+        
+        // Generate Input Fields
+        container.innerHTML = `<p class="text-xs text-slate-500 mb-2">Enter your average carry distance for each club.</p>`;
+        
+        clubList.forEach(club => {
+            const savedVal = window.state.clubs[club.id] || '';
+            const savedType = window.state.clubTypes?.[club.id] || club.name;
+            const placeholder = club.default;
+            
+            let labelHtml = `<label class="text-sm font-semibold text-slate-700">${club.name}</label>`;
+            
+            if (club.options) {
+                labelHtml = `
+                    <select id="type-${club.id}" class="text-sm font-semibold text-slate-700 bg-transparent border-b border-slate-300 focus:border-golf-500 outline-none pb-0.5 max-w-[140px]">
+                        ${club.options.map(opt => `<option value="${opt}" ${opt === savedType ? 'selected' : ''}>${opt}</option>`).join('')}
+                    </select>
+                `;
+            }
+
+            const div = document.createElement('div');
+            div.className = "flex items-center justify-between bg-slate-50 p-2 rounded-lg border border-slate-100";
+            div.innerHTML = `
+                ${labelHtml}
+                <div class="flex items-center gap-2">
+                    <input type="number" id="input-${club.id}" value="${savedVal}" placeholder="${placeholder}" 
+                            class="w-20 p-1.5 text-right text-sm border border-slate-300 rounded focus:border-golf-500 focus:ring-1 focus:ring-golf-500 outline-none">
+                    <span class="text-xs text-slate-400 font-medium w-4">yds</span>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+
+        modal.classList.remove('hidden');
+    }
+
+    window.closeBagModal = function() {
+        document.getElementById('bag-modal').classList.add('hidden');
+    }
+
+    // UI Helpers for Active States
+    function updateLieButtons() {
+        document.querySelectorAll('.lie-btn').forEach(btn => {
+            if (btn.dataset.lie === window.state.lie) {
+                btn.classList.add('bg-white', 'text-golf-600', 'shadow-sm', 'ring-1', 'ring-slate-200');
+                btn.classList.remove('text-slate-500', 'hover:bg-slate-200');
+            } else {
+                btn.classList.remove('bg-white', 'text-golf-600', 'shadow-sm', 'ring-1', 'ring-slate-200');
+                btn.classList.add('text-slate-500', 'hover:bg-slate-200');
+            }
+        });
+    }
+
+    // Logic Functions
+    window.toggleFinder = function(showExpanded) {
+        const compact = document.getElementById('finder-compact');
+        const expanded = document.getElementById('finder-expanded');
+        
+        if (showExpanded) {
+            compact.classList.add('hidden');
+            expanded.classList.remove('hidden');
+        } else {
+            compact.classList.remove('hidden');
+            expanded.classList.add('hidden');
+        }
+    }
+    
+    window.toggleZipSearch = function() {
+        const container = document.getElementById('zip-search-container');
+        const btn = document.getElementById('zip-toggle-btn');
+        if (container.classList.contains('hidden')) {
+            container.classList.remove('hidden');
+            btn.classList.add('hidden'); // Hide link once clicked
+        } else {
+            container.classList.add('hidden');
+        }
+    }
+
+async function checkSupabaseForCourses(lat, lon) {
+        // 1. Call the RPC function we just created
+        const { data: dbCourses, error } = await supabase.rpc('nearby_courses', { 
+            user_lat: lat, 
+            user_lon: lon,
+            radius_meters: 5000 // 5km search radius
+        });
+
+        if (error) {
+            console.error("DB Search Error:", error);
+            // On error, fall back to OSM immediately
+            fetchOverpassData(lat, lon, 32200);
+            return;
+        }
+
+        // 2. Logic: Found in DB? Show them. If not, go to OSM.
+        if (dbCourses && dbCourses.length > 0) {
+            console.log("Found courses in Supabase:", dbCourses);
+            
+            // Format DB results to match the App's expected structure
+            window.state.courses = dbCourses.map(c => ({
+                id: c.id,          // UUID
+                name: c.name,
+                osm_id: c.osm_id,
+                dist: c.dist_meters, // calculated by PostGIS
+                source: 'supabase',  // FLAG: Tells us this is a saved course
+                holes: [],           // Empty for now, we load them on click
+                availableTees: []
+            }));
+
+            renderCourseList();
+            resetScanBtn();
+            document.getElementById('scan-status').textContent = "Found in Database";
+            
+            // Switch UI to list view
+            document.getElementById('finder-compact').classList.add('hidden');
+            document.getElementById('finder-expanded').classList.remove('hidden');
+            document.getElementById('course-list-container').classList.remove('hidden');
+
+        } else {
+            console.log("No courses in DB, checking OSM...");
+            document.getElementById('scan-text').textContent = "Scanning OSM...";
+            // Fallback to original OSM scan
+            fetchOverpassData(lat, lon, 32200);
+        }
+    }
+
+async function loadSupabaseCourseDetail(courseId) {
+        const status = document.getElementById('scan-status');
+        status.textContent = "Loading Map...";
+        
+        // 1. Fetch Holes
+        const { data: holes } = await supabase
+            .from('holes')
+            .select('*')
+            .eq('course_id', courseId)
+            .order('hole_number', { ascending: true });
+
+        // 2. Fetch Features (Polygons)
+        const { data: features } = await supabase
+            .from('course_features')
+            .select('*')
+            .eq('course_id', courseId);
+
+        if (!holes || holes.length === 0) {
+            alert("Error: Course found but has no hole data.");
+            return false;
+        }
+
+        // 3. Update State
+        // We need to map the DB format back to the App format
+        const course = window.state.courses.find(c => c.id === courseId);
+        
+        // Map Holes
+        course.holes = holes.map(h => ({
+            label: `Hole ${h.hole_number}`,
+            sortRef: h.hole_number,
+            pars: { default: h.par },
+            lat: h.green_center.coordinates[1], // PostGIS returns [lon, lat]
+            lon: h.green_center.coordinates[0],
+            teeLocation: h.tee_box ? { lat: h.tee_box.coordinates[1], lon: h.tee_box.coordinates[0] } : null
+        }));
+
+        // Map Polygons
+        window.state.polygons = features.map(f => ({
+            type: f.type,
+            // PostGIS Polygon format is complex, we need to parse the coordinates
+            // This assumes the standard GeoJSON structure returned by Supabase
+            points: f.geom.coordinates[0].map(pt => ({ lat: pt[1], lon: pt[0] }))
+        }));
+
+        console.log("Course Loaded from DB!");
+        return true;
+    }
+
+    window.searchByZip = async function() {
+        const zipInput = document.getElementById('zip-input');
+        const btn = document.getElementById('zip-btn');
+        const status = document.getElementById('scan-status');
+        const zip = zipInput.value.trim();
+
+        if (!zip) { alert("Please enter Zip"); return; }
+        btn.textContent = "...";
+        btn.disabled = true;
+
+        saveUserSetting('homeZipCode', zip);
+
+        try {
+            const res = await fetch(`https://api.zippopotam.us/us/${zip}`);
+            if (!res.ok) throw new Error("Invalid Zip");
+            const data = await res.json();
+            const lat = parseFloat(data.places[0].latitude);
+            const lon = parseFloat(data.places[0].longitude);
+            
+            window.state.userLat = lat; window.state.userLon = lon;
+            status.textContent = "Searching area...";
+            fetchOverpassData(lat, lon, 32200);
+            
+            if(window.state.isLoggedIn) fetchWeather(lat, lon);
+            
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            btn.textContent = "Search";
+            btn.disabled = false;
+        }
+    }
+
+    window.useDemoLocation = function() {
+        window.state.userLat = 36.5698; window.state.userLon = -121.9511;
+        fetchOverpassData(window.state.userLat, window.state.userLon, 5000);
+        if(window.state.isLoggedIn) fetchWeather(window.state.userLat, window.state.userLon);
+    }
+
+    function resetScanBtn() {
+        const btn = document.getElementById('scan-btn');
+        if(btn) {
+            document.getElementById('scan-icon').textContent = '📍';
+            document.getElementById('scan-text').textContent = 'Scan Nearby';
+            btn.disabled = false;
+        }
+    }
+
+    function startLiveTracking() {
+        if (window.state.watchId) navigator.geolocation.clearWatch(window.state.watchId);
+        document.getElementById('live-badge').classList.remove('hidden');
+        window.state.watchId = navigator.geolocation.watchPosition((pos) => {
+            window.state.userLat = pos.coords.latitude;
+            window.state.userLon = pos.coords.longitude;
+            document.getElementById('gps-accuracy').textContent = `GPS: ±${Math.round(pos.coords.accuracy)}m`;
+            
+            checkAutoHoleSwitch(window.state.userLat, window.state.userLon);
+
+            if(window.state.selectedCourseIndex !== null && !window.state.manualDistance) updateHoleDisplay();
+            
+            checkAutoLie(window.state.userLat, window.state.userLon);
+        }, null, { enableHighAccuracy: true });
+    }
+
+    async function fetchOverpassData(lat, lon, radius) {
+        const query = `[out:json][timeout:45];(way["golf"="course"](around:${radius},${lat},${lon});relation["golf"="course"](around:${radius},${lat},${lon});way["leisure"="golf_course"](around:${radius},${lat},${lon});relation["leisure"="golf_course"](around:${radius},${lat},${lon});way["golf"="hole"](around:${radius},${lat},${lon});node["golf"="green"](around:${radius},${lat},${lon});way["golf"="green"](around:${radius},${lat},${lon});node["golf"="pin"](around:${radius},${lat},${lon});node["golf"="tee"](around:${radius},${lat},${lon});way["golf"~"fairway|bunker|tee|water_hazard|rough"](around:${radius},${lat},${lon});way["natural"="water"](around:${radius},${lat},${lon}););out geom;`;
+        
+        const endpoints = [
+            "https://overpass-api.de/api/interpreter",
+            "https://overpass.kumi.systems/api/interpreter",
+            "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+            "https://lz4.overpass-api.de/api/interpreter",
+            "https://overpass.openstreetmap.ru/api/interpreter"
+        ];
+
+        let successData = null;
+
+        for (const ep of endpoints) {
+            try {
+                console.log(`Trying map server: ${ep}`);
+                const res = await fetch(`${ep}?data=${encodeURIComponent(query)}`);
+                if(!res.ok) throw new Error(res.statusText);
+                successData = await res.json();
+                break;
+            } catch(e){
+                console.warn(`Failed to connect to ${ep}:`, e);
+            }
+        }
+
+        if (successData) {
+            try {
+                processMapData(successData.elements);
+            } catch(e) {
+                console.error("CRITICAL APP ERROR: Data received, but processing failed.", e);
+                alert("App Error: Found map data but could not display it. Check console.");
+                resetScanBtn();
+            }
+        } else {
+            alert("Could not connect to map server. All mirrors failed. Please try again in a minute.");
+            resetScanBtn();
+        }
+    }
+
+    function processMapData(elements) {
+        if (!elements || elements.length === 0) { alert("No courses found."); resetScanBtn(); return; }
+        
+        window.state.courses = []; window.state.polygons = [];
+        let rawCourses = [], rawGreens = [], holeLines = [], rawTees = [];
+
+        elements.forEach(el => {
+            let lat, lon;
+            if (el.type === 'node') { lat = el.lat; lon = el.lon; }
+            else if (el.bounds) { lat = (el.bounds.minlat+el.bounds.maxlat)/2; lon = (el.bounds.minlon+el.bounds.maxlon)/2; }
+            else if (el.geometry) { lat = el.geometry[0].lat; lon = el.geometry[0].lon; }
+            else return;
+
+            // Polygons
+            if (el.type === 'way' && el.geometry && el.tags) {
+                const pts = el.geometry.map(p=>({lat:p.lat, lon:p.lon}));
+                let t = null;
+                if(el.tags.golf==='fairway') t='fairway';
+                else if(el.tags.golf==='bunker') t='bunker';
+                else if(el.tags.golf==='tee') t='tee';
+                else if(el.tags.golf==='water_hazard' || el.tags.natural==='water') t='water';
+                else if(el.tags.golf==='rough') t='rough';
+                if(t) window.state.polygons.push({type:t, points:pts});
+            }
+
+            // Courses
+            const isCourse = (el.tags && (el.tags.golf==='course' || el.tags.leisure==='golf_course'));
+            if(isCourse && el.tags.name) {
+                rawCourses.push({ id:el.id, name:el.tags.name, lat, lon, dist: calcDist(window.state.userLat,window.state.userLon,lat,lon), holes:[], availableTees: [] });
+            }
+            
+            // Greens
+            else if (el.tags && (el.tags.golf==='green'||el.tags.golf==='pin')) {
+                let lbl="Green", ref=null;
+                if(el.tags.ref){ lbl=`Hole ${el.tags.ref}`; ref=parseInt(el.tags.ref); }
+                else if(el.tags.name){ 
+                    if(/^\d+$/.test(el.tags.name)){ lbl=`Hole ${el.tags.name}`; ref=parseInt(el.tags.name); }
+                    else lbl=el.tags.name;
+                }
+                rawGreens.push({ label:lbl, sortRef:ref, lat, lon, pars: { default: '-' }, teeLocation: null });
+            }
+
+            // Explicit Tee Nodes
+            else if (el.tags && el.tags.golf==='tee') {
+                let ref = null;
+                if(el.tags.ref) ref = parseInt(el.tags.ref);
+                rawTees.push({ ref: ref, lat, lon });
+            }
+
+            // Hole Lines
+            else if (el.tags && el.tags.golf==='hole' && el.tags.ref && el.geometry) {
+                const start = el.geometry[0];
+                const end = el.geometry[el.geometry.length-1];
+                const pars = { default: el.tags.par || el.tags['golf:par'] || '-' };
+                Object.keys(el.tags).forEach(key => {
+                    if (key.startsWith('par:')) {
+                        const color = key.split(':')[1];
+                        pars[color] = el.tags[key];
+                    }
+                });
+                holeLines.push({ ref:parseInt(el.tags.ref), endLat:end.lat, endLon:end.lon, startLat:start.lat, startLon:start.lon, pars: pars });
+            }
+        });
+
+        // Match Lines to Greens
+        rawGreens.forEach(g => {
+            let best=null, minD=40;
+            holeLines.forEach(l => {
+                const d = calcDist(g.lat, g.lon, l.endLat, l.endLon);
+                if(d<minD){ minD=d; best=l; }
+            });
+            
+            if(best){ 
+                g.pars = best.pars; 
+                if(g.sortRef === null) { g.sortRef = best.ref; g.label=`Hole ${best.ref}`; }
+                g.teeLocation = { lat: best.startLat, lon: best.startLon };
+            }
+        });
+
+        // Associate Explicit Tee Nodes
+        rawGreens.forEach(g => {
+            if(g.sortRef !== null) {
+                let bestTee = null;
+                let minTeeDist = 1000;
+                rawTees.forEach(t => {
+                    if(t.ref === g.sortRef) {
+                        const d = calcDist(g.lat, g.lon, t.lat, t.lon);
+                        if(d < minTeeDist) { minTeeDist = d; bestTee = t; }
+                    }
+                });
+                if(bestTee) g.teeLocation = { lat: bestTee.lat, lon: bestTee.lon };
+            }
+        });
+
+        if(rawCourses.length===0) rawCourses.push({name:"Unknown Course", lat:window.state.userLat, lon:window.state.userLon, dist:0, holes:[], availableTees: []});
+
+        // Assign Greens to Course
+        rawGreens.forEach(g => {
+            let best=null, minD=Infinity;
+            rawCourses.forEach(c => {
+                const d = calcDist(c.lat,c.lon, g.lat,g.lon);
+                if(d<minD){ minD=d; best=c; }
+            });
+            if(best){
+                g.userDist = calcDist(window.state.userLat, window.state.userLon, g.lat, g.lon);
+                best.holes.push(g);
+            }
+        });
+
+        // Clean & Sort
+        rawCourses.forEach(c => {
+            const hasNums = c.holes.some(h=>h.sortRef!==null);
+            if(hasNums) c.holes = c.holes.filter(h=>h.sortRef!==null || (h.label!=="Green" && !h.label.includes("Practice")));
+            c.holes.sort((a,b)=>(a.sortRef||999)-(b.sortRef||999));
+            
+            const teeSet = new Set();
+            c.holes.forEach(h => { Object.keys(h.pars).forEach(k => { if(k !== 'default') teeSet.add(k); }); });
+            c.availableTees = Array.from(teeSet);
+        });
+
+
+        window.state.courses = rawCourses.filter(c=>c.holes.length>0).sort((a,b)=>a.dist-b.dist);
+        
+        // --- ADD THIS TRIGGER RIGHT HERE ---
+        if (window.state.courses.length > 0) {
+             // Save the closest course (index 0) along with the polygons
+             saveCourseToSupabase(window.state.courses[0], window.state.polygons);
+        }
+
+        renderCourseList();
+        
+        const legacySel = document.getElementById('hole-selection-container');
+        const newSel = document.getElementById('course-list-container');
+        if(legacySel) legacySel.classList.add('hidden');
+        if(newSel) newSel.classList.remove('hidden');
+        
+        resetScanBtn();
+        checkAutoLie(window.state.userLat, window.state.userLon);
+    }
+
+    // --- AUTO-ADVANCE LOGIC ---
+    function checkAutoHoleSwitch(lat, lon) {
+        if (window.state.selectedCourseIndex === null) return;
+        const course = window.state.courses[window.state.selectedCourseIndex];
+        
+        for (let i = 0; i < course.holes.length; i++) {
+            const hole = course.holes[i];
+            if (hole.teeLocation) {
+                const distToTee = calcDist(lat, lon, hole.teeLocation.lat, hole.teeLocation.lon);
+                if (distToTee < 15 && window.state.currentHoleIndex !== i) {
+                    window.state.currentHoleIndex = i;
+                    window.state.manualDistance = false;
+                    document.getElementById('reset-dist-btn').classList.add('hidden');
+                    
+                    if(window.state.isLoggedIn) {
+                        fetchWeather(lat, lon, hole.lat, hole.lon);
+                    }
+                    
+                    updateHoleDisplay();
+                    break; 
+                }
+            }
+        }
+    }
+
+    function checkAutoLie(lat, lon) {
+        if(window.state.polygons.length===0) return;
+        let lie = null;
+        window.state.isOnTee = false;
+
+        if(inPoly(lat,lon,'water')) lie='recovery';
+        else if(inPoly(lat,lon,'bunker')) lie='bunker';
+        else if(inPoly(lat,lon,'tee')) {
+            lie='fairway';
+            window.state.isOnTee = true;
+        }
+        else if(inPoly(lat,lon,'fairway')) lie='fairway';
+        else if(inPoly(lat,lon,'rough')) lie='rough';
+        
+        if(lie) window.setLie(lie, true);
+    }
+
+    function inPoly(lat, lon, type) {
+        const targets = window.state.polygons.filter(p=>p.type===type);
+        for(let t of targets) {
+            let inside=false;
+            for(let i=0,j=t.points.length-1; i<t.points.length; j=i++){
+                let xi=t.points[i].lat, yi=t.points[i].lon;
+                let xj=t.points[j].lat, yj=t.points[j].lon;
+                let intersect = ((yi>lon)!==(yj>lon)) && (lat<(xj-xi)*(lon-yi)/(yj-yi)+xi);
+                if(intersect) inside=!inside;
+            }
+            if(inside) return true;
+        }
+        return false;
+    }
+
+    // Utils
+    function formatDist(y) { return y>700 ? (y/1760).toFixed(1)+" mi" : Math.round(y)+"y"; }
+    function calcDist(lat1,lon1,lat2,lon2) {
+        const R=6371e3, φ1=lat1*Math.PI/180, φ2=lat2*Math.PI/180, Δφ=(lat2-lat1)*Math.PI/180, Δλ=(lon2-lon1)*Math.PI/180;
+        const a=Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+        return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))*1.09361;
+    }
+    function interpolate(x, t) {
+        const ks = Object.keys(t).map(Number).sort((a,b)=>a-b);
+        if(x<=ks[0]) return t[ks[0]];
+        if(x>=ks[ks.length-1]) return t[ks[ks.length-1]];
+        for(let i=0; i<ks.length-1; i++){
+            if(x>=ks[i] && x<=ks[i+1]){
+                let r=(x-ks[i])/(ks[i+1]-ks[i]);
+                return t[ks[i]]+(t[ks[i+1]]-t[ks[i]])*r;
+            }
+        }
+        return 0;
+    }
+
+    // UI Updates
+    function renderCourseList() {
+        const list = document.getElementById('course-list');
+        if(!list) return;
+        list.innerHTML = '';
+        
+        if (window.state.courses.length === 0) {
+            list.innerHTML = `<div class="p-3 text-center text-xs text-slate-400">No courses found.</div>`;
+            return;
+        }
+
+        window.state.courses.forEach((c, i) => {
+            const btn = document.createElement('button');
+            btn.className = "w-full text-left p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 shadow-sm flex justify-between items-center transition-colors";
+            btn.onclick = () => selectCourse(i);
+            
+            const name = c.name || "Unknown Course";
+            const distText = c.dist ? formatDist(c.dist) : "--";
+            const holeCount = c.holes ? c.holes.length : 0;
+
+            btn.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="bg-golf-50 text-golf-600 rounded-lg p-2 font-bold text-lg">⛳</div>
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-sm leading-tight">${name}</h3>
+                        <p class="text-[10px] text-slate-400 mt-0.5">${holeCount} Holes detected</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs font-bold text-slate-600 block">${distText}</span>
+                    <span class="text-[9px] text-blue-400 uppercase tracking-wider font-semibold">Select</span>
+                </div>
+            `;
+            list.appendChild(btn);
+        });
+    }
+
+window.selectCourse = async function(idx) {
+        if (idx === undefined) return;
+        
+        const holeCard = document.getElementById('hole-info-card');
+        window.state.selectedCourseIndex = idx;
+        const course = window.state.courses[idx];
+
+        // --- NEW LOGIC: Check Source ---
+        if (course.source === 'supabase') {
+            // A. LOAD FROM DB
+            const success = await loadSupabaseCourseDetail(course.id);
+            if (!success) return; // Stop if load failed
+        } else {
+            // B. SAVE NEW OSM FIND
+            // Only save if it's a fresh OSM scan
+            saveCourseToSupabase(course, window.state.polygons);
+        }
+
+        // -------------------------------
+
+        window.state.selectedTee = 'default';
+        document.getElementById('compact-course-name').textContent = course.name;
+        document.getElementById('finder-collapse-btn').classList.remove('hidden');
+
+        window.state.currentHoleIndex = 0; 
+        const hole1Index = course.holes.findIndex(h => h.sortRef === 1);
+        if(hole1Index !== -1) window.state.currentHoleIndex = hole1Index;
+
+        holeCard.classList.remove('hidden');
+        updateHoleDisplay();
+        toggleFinder(false);
+    }
+
+    window.changeHole = function(offset) {
+        if(window.state.selectedCourseIndex === null) return;
+        const course = window.state.courses[window.state.selectedCourseIndex];
+        
+        let newIndex = window.state.currentHoleIndex + offset;
+        
+        if(newIndex < 0) newIndex = course.holes.length - 1;
+        if(newIndex >= course.holes.length) newIndex = 0;
+        
+        window.state.currentHoleIndex = newIndex;
+        window.state.manualDistance = false;
+        document.getElementById('reset-dist-btn').classList.add('hidden');
+        updateHoleDisplay();
+    }
+
+    function updateHoleDisplay() {
+        if(window.state.selectedCourseIndex === null) return;
+        const course = window.state.courses[window.state.selectedCourseIndex];
+        const hole = course.holes[window.state.currentHoleIndex];
+        
+        const parVal = hole.pars[window.state.selectedTee] || hole.pars['default'];
+        
+        document.getElementById('hole-display-num').textContent = hole.label;
+        document.getElementById('hole-display-par').textContent = parVal !== '-' ? `Par ${parVal}` : 'Par --';
+        
+        if(!window.state.manualDistance) {
+            const dist = calcDist(window.state.userLat, window.state.userLon, hole.lat, hole.lon);
+            window.state.dist = Math.round(dist);
+        }
+        
+        let distText = Math.round(window.state.dist) + " Yards";
+        if(window.state.dist > 700) distText = (window.state.dist/1760).toFixed(2) + " Miles";
+        document.getElementById('hole-display-yards').textContent = distText;
+
+        document.getElementById('dist-input').value = window.state.dist;
+        document.getElementById('dist-val').textContent = window.state.dist;
+        
+        updateUI();
+    }
+
+    window.resetDistance = function() {
+        window.state.manualDistance = false;
+        document.getElementById('reset-dist-btn').classList.add('hidden');
+        updateHoleDisplay();
+    }
+
+    window.setLie = function(l, auto) {
+        if (auto && window.state.manualLie) return;
+
+        window.state.lie = l;
+        if (!auto) {
+            window.state.manualLie = true;
+            document.getElementById('reset-lie-btn').classList.remove('hidden');
+            document.getElementById('auto-lie-badge').classList.add('hidden');
+        } else {
+            document.getElementById('auto-lie-badge').classList.remove('hidden');
+            document.getElementById('auto-lie-badge').textContent = `Auto: ${l.toUpperCase()}`;
+        }
+        updateLieButtons();
+        updateUI();
+    }
+
+    window.resetLie = function() {
+        window.state.manualLie = false;
+        document.getElementById('reset-lie-btn').classList.add('hidden');
+        checkAutoLie(window.state.userLat, window.state.userLon);
+    }
+    
+    // --- PLAY LIKE & CLUB RECOMMENDATION ---
+    
+    function calculatePlaysLike(dist, lie) {
+        let multiplier = 1.0;
+        if (lie === 'rough') multiplier = 1.10;
+        if (lie === 'bunker') multiplier = 1.20;
+        return Math.round(dist * multiplier);
+    }
+    
+    function getClubRecommendation(playsLikeDist) {
+        let bag = clubList.map(c => {
+            const userDist = window.state.clubs[c.id];
+            const dist = userDist !== undefined ? userDist : c.default;
+            const typeName = window.state.clubTypes[c.id] || c.name;
+            return { name: typeName, dist: dist, id: c.id };
+        });
+
+        if (!window.state.isOnTee) {
+            bag = bag.filter(c => c.id !== 'driver');
+        }
+
+        bag.sort((a, b) => b.dist - a.dist); 
+
+        let recommended = bag[0]; 
+        
+        for (let i = bag.length - 1; i >= 0; i--) {
+            if (bag[i].dist >= playsLikeDist) {
+                recommended = bag[i];
+                break;
+            }
+        }
+        
+        let pct = (playsLikeDist / recommended.dist) * 100;
+        pct = Math.round(pct / 5) * 5;
+        
+        if (pct > 100) pct = 100; 
+        if (pct < 40) pct = 40; 
+        
+        return { club: recommended.name, pct: pct };
+    }
+    
+    function calculateShotPhysics(dist) {
+            const weather = window.state.weather;
+            let lieAdj = 0, tempAdj = 0, windAdj = 0, elevAdj = 0, slopeAdj = 0;
+
+            if (window.state.lie === 'rough') lieAdj = dist * 0.07; 
+            else if (window.state.lie === 'bunker') lieAdj = dist * 0.15; 
+
+            if (weather) {
+                tempAdj = -(dist * ((weather.temp - 85) * 0.001));
+
+                const elevMeters = weather.elevation || 0;
+                elevAdj = -(dist * (((elevMeters * 3.28084) / 1000) * 0.012));
+
+// SLOPE: REVISED CADDIE LOGIC
+                 if (window.state.greenElevation !== null) {
+                     const diffMeters = window.state.greenElevation - elevMeters;
+                     const diffFeet = diffMeters * 3.28084;
+
+                     // Base formula: 1 yard per 3 feet elevation change (Standard Rule)
+                     let baseAdj = diffFeet / 3;
+
+                     // Asymmetry: Downhill helps less than uphill hurts (Trajectory physics)
+                     const asymmetryFactor = diffFeet > 0 ? 1.0 : 0.6;
+
+                     slopeAdj = baseAdj * asymmetryFactor;
+
+                     // Sanity check: cap at ±20% of distance
+                     slopeAdj = Math.max(-dist * 0.2, Math.min(dist * 0.2, slopeAdj));
+                 }
+
+                if (window.state.selectedCourseIndex !== null) {
+                    const course = window.state.courses[window.state.selectedCourseIndex];
+                    const hole = course.holes[window.state.currentHoleIndex];
+                    
+                    const bearing = getBearing(window.state.userLat, window.state.userLon, hole.lat, hole.lon);
+                    const theta = Math.abs(bearing - weather.windDir) * (Math.PI/180);
+                    const windFactor = Math.cos(theta); 
+                    
+                    let windMod = weather.windSpeed * windFactor;
+                    if (windMod < 0) windMod *= 0.5;
+                    windAdj = dist * (windMod * 0.01);
+                }
+            }
+
+            const totalPlaysLike = Math.round(dist + lieAdj + tempAdj + windAdj + elevAdj + slopeAdj);
+            
+            return {
+                total: totalPlaysLike,
+                adjustments: { lie: lieAdj, temp: tempAdj, wind: windAdj, elev: elevAdj, slope: slopeAdj }
+            };
+    }
+
+    function calculate(distanceOverride) {
+        const effectiveDist = distanceOverride !== undefined ? distanceOverride : window.state.dist;
+        
+        const table = baselines[window.state.lie] || baselines.fairway;
+        const base = interpolate(effectiveDist, table);
+        const hcp = window.state.hcp;
+        const delta = hcp + 5;
+        const dFact = effectiveDist<100 ? 0.6 : effectiveDist>175 ? 1.3 : 1.0;
+        
+        let prob = Math.min(99, Math.max(1, base - (delta*1.2*dFact)));
+        
+        return { user:prob.toFixed(1), pro:base.toFixed(1) };
+    }
+
+    function updateUI() {
+        let res;
+        let physics = null;
+
+        if (window.state.isLoggedIn && window.state.lie !== 'recovery') {
+            const dist = parseFloat(window.state.dist);
+            physics = calculateShotPhysics(dist);
+            res = calculate(physics.total - physics.adjustments.lie);
+        } else {
+            res = calculate(window.state.dist);
+        }
+
+        document.getElementById('prob-display').textContent = Math.round(res.user)+"%";
+        document.getElementById('pro-val').textContent = Math.round(res.pro)+"%";
+        document.getElementById('prob-circle').style.setProperty('--progress', `${res.user}%`);
+        document.getElementById('pro-bar').style.width = `${res.pro}%`;
+        
+        const weatherWidget = document.getElementById('weather-widget');
+        if (window.state.isLoggedIn && window.state.weather) {
+            weatherWidget.classList.remove('hidden');
+            document.getElementById('weather-temp').textContent = `${window.state.weather.temp}°F`;
+            document.getElementById('weather-wind').textContent = `${window.state.weather.windSpeed} mph`;
+            const elevFt = Math.round(window.state.weather.elevation * 3.28084);
+            if(document.getElementById('weather-elev')) {
+                    document.getElementById('weather-elev').textContent = `${elevFt} ft`;
+            }
+            
+            document.getElementById('wind-arrow-icon').style.transform = `rotate(${window.state.weather.windDir}deg)`;
+        } else {
+            weatherWidget.classList.add('hidden');
+        }
+
+        const analysisContainer = document.getElementById('analysis-text');
+        const u = parseFloat(res.user);
+        const circ = document.getElementById('prob-circle');
+        let color = '#16a34a';
+
+        if(window.state.lie==='recovery') color='#ef4444'; 
+        else if(u > parseFloat(res.pro)+5) color='#16a34a'; 
+        else if(u > 65) color='#16a34a'; 
+        else if(u > 45) color='#eab308'; 
+        else if(u > 25) color='#f97316'; 
+        else color='#ef4444';
+        
+        circ.style.setProperty('--bar-color', color);
+
+        if (!window.state.isLoggedIn) {
+            analysisContainer.innerHTML = `<div class="p-4 w-full h-full flex items-center justify-center"><p class="text-xs text-slate-600 font-medium leading-relaxed text-center" id="guest-advice-text"></p></div>`;
+            
+            const el = document.getElementById('guest-advice-text');
+            
+            if(window.state.lie==='recovery') { 
+                el.textContent="Recovery Mode. Get back to safety."; 
+            }
+            else if(u > parseFloat(res.pro)+5) { 
+                el.textContent="Elite. You beat the pros here."; 
+            }
+            else if(u > 65) { 
+                el.textContent="Green Light! Go flag hunting."; 
+            }
+            else if(u > 45) { 
+                el.textContent="Good odds. Aim center mass."; 
+            }
+            else if(u > 25) { 
+                el.textContent="Defensive Zone. Play safe."; 
+            }
+            else { 
+                el.textContent="High Risk. Avoid trouble."; 
+            }
+            return; 
+        }
+        
+        if (window.state.lie === 'recovery') {
+            analysisContainer.innerHTML = `
+                <div class="p-4 w-full h-full flex flex-col items-center justify-center">
+                    <span class="font-bold text-red-600 block text-lg">RECOVERY</span>
+                    <span class="text-xs text-slate-500">Punch out to fairway.</span>
+                </div>`;
+        } else {
+            const totalPlaysLike = physics.total;
+            const rec = getClubRecommendation(totalPlaysLike);
+            
+            const { lie: lieAdj, temp: tempAdj, wind: windAdj, elev: elevAdj, slope: slopeAdj } = physics.adjustments;
+            const fmt = (n) => (n > 0 ? `+${Math.round(n)}` : `${Math.round(n)}`);
+
+            analysisContainer.innerHTML = `
+                <div class="w-full flex flex-col divide-y divide-slate-100">
+                    <div class="px-3 py-1.5 bg-slate-50 flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Conditions</span>
+                            <button onclick="forceWeatherUpdate(this)" class="p-1 hover:bg-slate-200 rounded-full transition-colors" title="Force Weather/Slope Update">
+                                <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            </button>
+                        </div>
+                        <span class="text-[9px] font-bold text-slate-300">IMPACT (YDS)</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-5 px-1 py-1.5 bg-slate-50 text-center border-t border-slate-100">
+                        <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Lie</span>
+                        <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Temp</span>
+                        <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Wind</span>
+                        <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Elev</span>
+                        <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Slope</span>
+                    </div>
+
+                    <div class="grid grid-cols-5 divide-x divide-slate-100 bg-white text-center">
+                        <div class="py-2 text-xs font-bold ${lieAdj > 0 ? 'text-red-500' : 'text-slate-400'}">${fmt(lieAdj)}</div>
+                        <div class="py-2 text-xs font-bold ${tempAdj !== 0 ? 'text-blue-500' : 'text-slate-400'}">${fmt(tempAdj)}</div>
+                        <div class="py-2 text-xs font-bold ${Math.abs(windAdj) > 2 ? 'text-blue-500' : 'text-slate-400'}">${fmt(windAdj)}</div>
+                        <div class="py-2 text-xs font-bold ${elevAdj !== 0 ? 'text-blue-500' : 'text-slate-400'}">${fmt(elevAdj)}</div>
+                        <div class="py-2 text-xs font-bold ${slopeAdj !== 0 ? 'text-blue-500' : 'text-slate-400'}">${fmt(slopeAdj)}</div>
+                    </div>
+
+                    <div class="flex justify-between items-center w-full px-4 py-3 bg-slate-50/50 border-t border-slate-100">
+                        <div class="text-center flex-1">
+                            <span class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Plays Like</span>
+                            <span class="block text-xl font-bold text-slate-800">${totalPlaysLike}y</span>
+                        </div>
+                        <div class="h-8 w-px bg-slate-200 mx-4"></div>
+                        <div class="text-center flex-1">
+                            <span class="block text-[9px] text-slate-400 uppercase tracking-wider mb-0.5">Caddie Suggests</span>
+                            <span class="block text-xl font-bold text-golf-600 leading-none">${rec.pct}% <span class="text-slate-700 text-base">${rec.club}</span></span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // Listeners
+    document.getElementById('hcp-input').addEventListener('input', e=>{
+        window.state.hcp=parseInt(e.target.value);
+        saveUserSetting('handicap', window.state.hcp);
+        document.getElementById('hcp-val').textContent = window.state.hcp<0 ? "+"+Math.abs(window.state.hcp) : window.state.hcp;
+        updateUI();
+    });
+    document.getElementById('dist-input').addEventListener('input', e=>{
+        window.state.dist=e.target.value;
+        window.state.manualDistance = true;
+        document.getElementById('reset-dist-btn').classList.remove('hidden');
+        document.getElementById('dist-val').textContent=window.state.dist;
+        updateUI();
+    });
+
+    // Init
+    updateLieButtons();
+    updateUI();
+</script>
+</body>
+</html>
