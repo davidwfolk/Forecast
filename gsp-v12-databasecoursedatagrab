@@ -727,6 +727,43 @@
         console.log("Course Saved Successfully!");
     }
 
+window.scanForCourses = function() {
+        const btn = document.getElementById('scan-btn');
+        const icon = document.getElementById('scan-icon');
+        const text = document.getElementById('scan-text');
+        const status = document.getElementById('scan-status');
+
+        icon.innerHTML = '<div class="spinner"></div>';
+        text.textContent = "Checking Database...";
+        btn.disabled = true;
+
+        if (!navigator.geolocation) {
+            status.innerHTML = `<span class="text-red-500">Not supported</span>`;
+            resetScanBtn();
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                window.state.userLat = pos.coords.latitude;
+                window.state.userLon = pos.coords.longitude;
+                status.textContent = "Location found";
+                
+                // NEW: Start by checking Supabase
+                checkSupabaseForCourses(window.state.userLat, window.state.userLon);
+                
+                startLiveTracking();
+                if(window.state.isLoggedIn) fetchWeather(window.state.userLat, window.state.userLon);
+            },
+            (err) => {
+                console.error(err);
+                status.innerHTML = `<a href="#" onclick="useDemoLocation(); return false;" class="text-blue-500 underline">Use Demo</a>`;
+                resetScanBtn();
+            },
+            { enableHighAccuracy: true, timeout: 8000 }
+        );
+    }
+
     // --- WEATHER LOGIC (Open-Meteo) ---
     async function fetchWeather(lat, lon, greenLat = null, greenLon = null) {
         if (!window.state.isLoggedIn) return; // Only fetch if logged in
@@ -1354,15 +1391,12 @@ window.selectCourse = async function(idx) {
 
         // --- NEW LOGIC: Check Source ---
         if (course.source === 'supabase') {
-            // A. LOAD FROM DB
             const success = await loadSupabaseCourseDetail(course.id);
-            if (!success) return; // Stop if load failed
+            if (!success) return; 
         } else {
-            // B. SAVE NEW OSM FIND
-            // Only save if it's a fresh OSM scan
+            // Only save if it's a NEW OSM find
             saveCourseToSupabase(course, window.state.polygons);
         }
-
         // -------------------------------
 
         window.state.selectedTee = 'default';
