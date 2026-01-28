@@ -1219,12 +1219,6 @@ async function loadSupabaseCourseDetail(courseId) {
 
 
         window.state.courses = rawCourses.filter(c=>c.holes.length>0).sort((a,b)=>a.dist-b.dist);
-        
-        // --- ADD THIS TRIGGER RIGHT HERE ---
-        if (window.state.courses.length > 0) {
-             // Save the closest course (index 0) along with the polygons
-             saveCourseToSupabase(window.state.courses[0], window.state.polygons);
-        }
 
         renderCourseList();
         
